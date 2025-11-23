@@ -51,22 +51,14 @@ export const Register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const sessionId = crypto.randomBytes(16).toString("hex");
 
     const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
       profilePic: avatarUrl,
-      sessionId,
       isActive: false,
     });
-
-    const token = jwt.sign(
-      { userId: newUser._id, sessionId },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
 
     return res.status(201).json({
       success: true,
@@ -76,9 +68,7 @@ export const Register = async (req, res) => {
         username,
         email,
         avatar: avatarUrl,
-        sessionId,
       },
-      token,
     });
 
   } catch (error) {
