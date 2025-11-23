@@ -280,3 +280,67 @@ export const editData = async (req, res) => {
     });
   }
 };
+export const search = async (req, res) => {
+  try {
+    const { username, page = 1, limit = 20 } = req.body;
+
+    console.log("Search request received:", { username, page, limit });
+
+    if (!username || username.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: "Username must be at least 2 characters long"
+      });
+    }
+    const testUser = await User.findOne({});
+    console.log("Test user found:", testUser ? "Yes" : "No");
+
+    const exactUsers = await User.find({
+      username: username
+    })
+    .select('_id username profilePic status isOnline')
+    .limit(5)
+    .lean();
+
+    // Option 2: Case insensitive search
+    const caseInsensitiveUsers = await User.find({
+      username: { $regex: username, $options: 'i' }
+    })
+    .select('_id username profilePic status')
+    .limit(5)
+    .lean();
+
+
+    // Option 3: Prefix search (what we actually want)
+    const prefixUsers = await User.find({
+      username: { $regex: `^${username}`, $options: 'i' }
+    })
+    .select('_id username profilePic status ')
+    .limit(limit)
+    .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: "Search completed successfully",
+      users: prefixUsers,
+      debug: {
+        exactMatches: exactUsers.length,
+        caseInsensitive: caseInsensitiveUsers.length,
+        prefixMatches: prefixUsers.length,
+        searchTerm: username
+      },
+      pagination: {
+        currentPage: page,
+        hasNext: prefixUsers.length === limit
+      }
+    });
+
+  } catch (error) {
+    console.error("Search error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error during search",
+      error: error.message
+    });
+  }
+};
