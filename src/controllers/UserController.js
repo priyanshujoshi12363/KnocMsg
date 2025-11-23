@@ -49,7 +49,7 @@ export const Register = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      avatar: avatarUrl, // << Store avatar URL
+      profilePic: avatarUrl, 
       sessionId,
     });
 
