@@ -2,6 +2,7 @@ import { User } from "../model/User.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 export const Register = async (req, res) => {
   try {
@@ -14,7 +15,7 @@ export const Register = async (req, res) => {
       });
     }
 
-    // Check existing username
+    // username exists?
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(409).json({
@@ -23,7 +24,7 @@ export const Register = async (req, res) => {
       });
     }
 
-    // Check existing email
+    // email exists?
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
       return res.status(409).json({
@@ -32,21 +33,26 @@ export const Register = async (req, res) => {
       });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Upload avatar if file exists
+    let avatarUrl = null;
+    if (req.file) {
+      const cloudinaryResult = await uploadOnCloudinary(req.file.buffer, {
+        folder: "chatapp/avatars",
+      });
+      avatarUrl = cloudinaryResult.secure_url;
+    }
 
-    // Create a sessionId (auto login)
+    const hashedPassword = await bcrypt.hash(password, 10);
     const sessionId = crypto.randomBytes(16).toString("hex");
 
-    // Save new user
     const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
+      avatar: avatarUrl, // << Store avatar URL
       sessionId,
     });
 
-    // Generate JWT
     const token = jwt.sign(
       { userId: newUser._id, sessionId },
       process.env.JWT_SECRET,
@@ -60,6 +66,7 @@ export const Register = async (req, res) => {
         _id: newUser._id,
         username,
         email,
+        avatar: avatarUrl,
         sessionId,
       },
       token,
