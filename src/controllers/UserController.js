@@ -4,10 +4,12 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+
 export const Register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    // Validation
     if (!username || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -15,31 +17,37 @@ export const Register = async (req, res) => {
       });
     }
 
-    // username exists?
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
+    // Username exists?
+    if (await User.findOne({ username })) {
       return res.status(409).json({
         success: false,
         message: "Username already exists",
       });
     }
 
-    // email exists?
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
+    // Email exists?
+    if (await User.findOne({ email })) {
       return res.status(409).json({
         success: false,
         message: "Email already exists",
       });
     }
 
-    // Upload avatar if file exists
+    // Upload avatar if provided
     let avatarUrl = null;
     if (req.file) {
-      const cloudinaryResult = await uploadOnCloudinary(req.file.buffer, {
-        folder: "chatapp/avatars",
-      });
-      avatarUrl = cloudinaryResult.secure_url;
+      try {
+        const uploaded = await uploadOnCloudinary(req.file.buffer, {
+          folder: "chatapp/avatars",
+        });
+        avatarUrl = uploaded.secure_url;
+      } catch (err) {
+        console.log("Cloudinary Upload Error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Avatar upload failed",
+        });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -49,8 +57,9 @@ export const Register = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      profilePic: avatarUrl, 
+      profilePic: avatarUrl,
       sessionId,
+      isActive: false,
     });
 
     const token = jwt.sign(
@@ -73,14 +82,13 @@ export const Register = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Register Error:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
     });
   }
 };
-
 
 export const Login = async (req, res) => {
   try {
