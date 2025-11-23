@@ -182,8 +182,7 @@ export const Logout = async (req, res) => {
   }
 };
 
-
-export const Isactive = async (req, res) => {
+export const getuserdata = async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -194,11 +193,9 @@ export const Isactive = async (req, res) => {
       });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { isOnline: true },
-      { new: true } 
-    );
+    // Find user
+    const user = await User.findById(userId).select("-password"); 
+    // (remove password from response for safety)
 
     if (!user) {
       return res.status(404).json({
@@ -207,28 +204,76 @@ export const Isactive = async (req, res) => {
       });
     }
 
-    setTimeout(async () => {
-      try {
-        await User.findByIdAndUpdate(userId, { isOnline: false });
-        console.log(`User ${user.username} is now offline`);
-      } catch (err) {
-        console.error("Failed to set user offline:", err);
-      }
-    }, 30000); 
-
     return res.status(200).json({
       success: true,
-      message: "User is now active",
-      user: {
-        _id: user._id,
-        username: user.username,
-        isOnline: user.isOnline,
-        sessionId: user.sessionId,
-      },
+      message: "User data fetched",
+      user,
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("getuserdata error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+export const editData = async (req, res) => {
+  try {
+    const { userId, username, email, status } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    const updateData = {};
+
+    // Add text fields only if provided
+    if (username) updateData.username = username;
+    if (email) updateData.email = email;
+    if (status) updateData.status = status;
+
+    // If image is provided
+    if (req.file) {
+      const uploadRes = await uploadOnCloudinary(req.file.buffer, {
+        folder: "chatapp/profilePics",
+      });
+
+      updateData.profilePic = uploadRes.secure_url;
+    }
+
+    // If no fields provided
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields provided to update",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      user: updatedUser,
+    });
+
+  } catch (error) {
+    console.error("editData Error:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
