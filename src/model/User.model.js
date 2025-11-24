@@ -20,8 +20,6 @@ const userSchema = new mongoose.Schema({
     },
     status: { type: String, default: "Hey! I am using Chat." },
 
-    socketId: { type: String },
-
     totalFollowers: [
     {
     type: mongoose.Schema.Types.ObjectId,
