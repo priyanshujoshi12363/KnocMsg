@@ -27,8 +27,8 @@ export const sendMessage = async (req, res) => {
 
     // 2️⃣ Populate sender details
     const populatedMessage = await MessageModel.findById(newMessage._id)
-      .populate("sender", "username profilePic")
-      .populate("receiver", "username profilePic")
+      .populate("sender", "username ")
+      .populate("receiver", "username ")
       .populate("replyTo");
 
     // 3️⃣ Get receiver socket id
@@ -46,6 +46,44 @@ export const sendMessage = async (req, res) => {
 
   } catch (error) {
     console.error("Send Message Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+export const getChatHistory = async (req, res) => {
+  try {
+    const { otherUserId } = req.params;
+    const { currentUserId } = req.body; 
+
+    if (!currentUserId || !otherUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Both currentUserId and otherUserId are required",
+      });
+    }
+
+    // Find messages between both users
+    const messages = await MessageModel.find({
+      $or: [
+        { sender: currentUserId, receiver: otherUserId },
+        { sender: otherUserId, receiver: currentUserId }
+      ]
+    })
+    .populate("sender", "username ")
+    .populate("receiver", "username ")
+    .populate("replyTo")
+    .sort({ createdAt: 1 }); // Oldest to newest
+
+    return res.status(200).json({
+      success: true,
+      data: messages,
+    });
+
+  } catch (error) {
+    console.error("Get Chat History Error:", error);
     return res.status(500).json({
       success: false,
       message: "Server Error",
