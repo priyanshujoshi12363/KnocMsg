@@ -344,3 +344,143 @@ export const search = async (req, res) => {
     });
   }
 };
+export const addFollower = async (req, res) => {
+  try {
+    // Get both user IDs from request body
+    const { userId1, userId2 } = req.body;
+
+    // Validate input
+    if (!userId1 || !userId2) {
+      return res.status(400).json({
+        success: false,
+        message: "Both userId1 and userId2 are required"
+      });
+    }
+
+    if (userId1 === userId2) {
+      return res.status(400).json({
+        success: false,
+        message: "Users cannot follow themselves"
+      });
+    }
+
+    // Find both users
+    const [user1, user2] = await Promise.all([
+      User.findById(userId1),
+      User.findById(userId2)
+    ]);
+
+    if (!user1 || !user2) {
+      return res.status(404).json({
+        success: false,
+        message: "One or both users not found"
+      });
+    }
+
+    // Check if already following each other
+    const user1FollowingUser2 = user1.totalFollowers.includes(userId2);
+    const user2FollowingUser1 = user2.totalFollowers.includes(userId1);
+
+    if (user1FollowingUser2 && user2FollowingUser1) {
+      return res.status(400).json({
+        success: false,
+        message: "Users are already following each other"
+      });
+    }
+
+    // Push each other's IDs into totalFollowers arrays
+    if (!user1FollowingUser2) {
+      user1.totalFollowers.push(userId2);
+    }
+
+    if (!user2FollowingUser1) {
+      user2.totalFollowers.push(userId1);
+    }
+
+    // Save both users
+    await Promise.all([
+      user1.save(),
+      user2.save()
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Users are now following each other",
+      data: {
+        user1: {
+          id: user1._id,
+          username: user1.username,
+          totalFollowers: user1.totalFollowers.length
+        },
+        user2: {
+          id: user2._id,
+          username: user2.username,
+          totalFollowers: user2.totalFollowers.length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in addFollower:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+export const getFollowers = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required"
+      });
+    }
+
+    // Find the user first
+    const user = await User.findById(userId).select('totalFollowers');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Get all follower details manually
+    const followers = await User.find(
+      { _id: { $in: user.totalFollowers } },
+      'username profilePic status createdAt updatedAt'
+    );
+
+    // Format response to match your database structure
+    const formattedFollowers = followers.map(follower => ({
+      _id: follower._id,
+      username: follower.username,
+      profilePic: follower.profilePic,
+      email: follower.email,
+      status: follower.status,
+      isOnline: follower.isOnline,
+      createdAt: follower.createdAt,
+      updatedAt: follower.updatedAt
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Followers fetched successfully",
+      data: formattedFollowers
+    });
+
+  } catch (error) {
+    console.error("Error in getFollowers:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};

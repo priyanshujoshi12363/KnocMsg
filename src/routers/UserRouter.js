@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { editData, getuserdata,Login, Logout, Register, search } from "../controllers/UserController.js";
+import { addFollower, editData, getFollowers, getuserdata,Login, Logout, Register, search } from "../controllers/UserController.js";
 import multer from "multer";
 
 const router = Router();
@@ -14,4 +14,8 @@ router.post("/get", getuserdata);
 router.post('/edit' , upload.single("profilePic"), editData)
 
 router.post('/search' , search)
+
+router.post('/add' , addFollower)
+
+router.get('/:userId' , getFollowers)
 export default router;
