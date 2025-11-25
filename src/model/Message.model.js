@@ -39,17 +39,19 @@ const MessageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message'
     },
-  
+
+
 
   }, 
   { 
-    timestamps: true 
+    timestamps: true
   }
 );
 
+MessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+
 MessageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
-MessageSchema.index({ receiver: 1, isRead: 1 }); 
-MessageSchema.index({ createdAt: 1 }); 
+MessageSchema.index({ receiver: 1, isRead: 1 });
 
 MessageSchema.virtual('conversationId').get(function() {
   const participants = [this.sender.toString(), this.receiver.toString()].sort();
