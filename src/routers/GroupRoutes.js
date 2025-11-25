@@ -11,6 +11,6 @@ const router = Router()
 router.post("/create", upload.single("groupImg"), createGrp );
 router.get('/:userId' , getGroupsByUserId)
 router.post("/message", upload.single("file"), sendGrpmsg);
-router.post("/getmsg" , getGroupMessages)
+router.post("/:groupId" , getGroupMessages)
 
 export default router

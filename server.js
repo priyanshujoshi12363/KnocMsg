@@ -38,7 +38,6 @@ app.get("/agora-token", (req, res) => {
     const APP_ID = "d4f5a6171178467e80e458648bd25cd3";
     const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
 
-    // If no App Certificate, return helpful error
     if (!APP_CERTIFICATE) {
       return res.status(500).json({ 
         success: false,
@@ -47,15 +46,12 @@ app.get("/agora-token", (req, res) => {
       });
     }
 
-    // Set token expiration time (1 hour)
     const expirationTimeInSeconds = 3600;
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
-    // Use 0 as UID if not provided
     const userId = uid ? parseInt(uid) : 0;
 
-    // 🔑 GENERATE TOKEN
     const token = RtcTokenBuilder.buildTokenWithUid(
       APP_ID,
       APP_CERTIFICATE,
@@ -98,8 +94,7 @@ app.get("/agora-config", (req, res) => {
   });
 });
 
-
-// Create HTTP server (required for socket.io)
+// Create HTTP server
 const server = http.createServer(app);
 
 // Create socket server
@@ -110,27 +105,83 @@ const io = new Server(server, {
 });
 
 let onlineUsers = {};
+let userGroups = {}; // Track which groups users are in
 
 global.io = io;
 global.onlineUsers = onlineUsers;
+global.userGroups = userGroups;
 
 io.on("connection", (socket) => {
   console.log("🟢 User Connected:", socket.id);
 
-  // ----------------- JOIN -----------------
+  // ----------------- JOIN USER -----------------
   socket.on("join", (userId) => {
     onlineUsers[userId] = socket.id;
-    console.log("User Joined:", userId, "Socket:", socket.id);
+    console.log("👤 User Joined:", userId, "Socket:", socket.id);
   });
 
-  // ----------------- DISCONNECT -----------------
-  socket.on("disconnect", () => {
-    console.log("🔴 User Disconnected:", socket.id);
-    for (let id in onlineUsers) {
-      if (onlineUsers[id] === socket.id) {
-        delete onlineUsers[id];
+  // ----------------- JOIN GROUP -----------------
+  socket.on("joinGroup", ({ userId, groupId }) => {
+    if (!userGroups[groupId]) {
+      userGroups[groupId] = new Set();
+    }
+    userGroups[groupId].add(userId);
+    
+    socket.join(groupId); // Join socket room for this group
+    console.log(`👥 User ${userId} joined group ${groupId}`);
+  });
+
+  // ----------------- LEAVE GROUP -----------------
+  socket.on("leaveGroup", ({ userId, groupId }) => {
+    if (userGroups[groupId]) {
+      userGroups[groupId].delete(userId);
+      if (userGroups[groupId].size === 0) {
+        delete userGroups[groupId];
       }
     }
+    
+    socket.leave(groupId); // Leave socket room
+    console.log(`👋 User ${userId} left group ${groupId}`);
+  });
+
+  // ----------------- SEND GROUP MESSAGE -----------------
+  socket.on("sendGroupMessage", (messageData) => {
+    const { groupId, senderId, text, messageType, replyTo } = messageData;
+    
+    console.log(`📨 Group message from ${senderId} to group ${groupId}: ${text}`);
+    
+    // Broadcast to all users in the group
+    io.to(groupId).emit("newGroupMessage", {
+      _id: Date.now().toString(), // Temporary ID until saved to DB
+      groupId,
+      sender: {
+        _id: senderId,
+        username: "Loading...", // Will be populated from DB
+        profilePic: ""
+      },
+      text,
+      messageType: messageType || "text",
+      replyTo: replyTo || null,
+      createdAt: new Date().toISOString(),
+      isTemporary: true // Flag to identify unsaved messages
+    });
+  });
+
+  // ----------------- TYPING INDICATOR -----------------
+  socket.on("groupTypingStart", ({ groupId, userId }) => {
+    socket.to(groupId).emit("userTypingInGroup", { 
+      groupId, 
+      userId,
+      isTyping: true 
+    });
+  });
+
+  socket.on("groupTypingStop", ({ groupId, userId }) => {
+    socket.to(groupId).emit("userTypingInGroup", { 
+      groupId, 
+      userId,
+      isTyping: false 
+    });
   });
 
   // ----------------- AGORA CALL SIGNALING -----------------
@@ -171,7 +222,53 @@ io.on("connection", (socket) => {
       console.log(`📞 Call cancelled to ${toUserId}`);
     }
   });
+
+  // ----------------- GROUP CALL SIGNALING -----------------
+  socket.on("startGroupCall", ({ groupId, channelName, callType, fromUserId }) => {
+    console.log(`📞 Group call initiated in ${groupId}, channel: ${channelName}, type: ${callType}`);
+    
+    // Notify all group members
+    socket.to(groupId).emit("incomingGroupCall", {
+      groupId,
+      channelName,
+      callType,
+      fromUserId
+    });
+  });
+
+  // ----------------- DISCONNECT -----------------
+  socket.on("disconnect", () => {
+    console.log("🔴 User Disconnected:", socket.id);
+    
+    // Remove user from online users
+    for (let userId in onlineUsers) {
+      if (onlineUsers[userId] === socket.id) {
+        delete onlineUsers[userId];
+        
+        // Remove user from all groups
+        for (let groupId in userGroups) {
+          userGroups[groupId].delete(userId);
+          if (userGroups[groupId].size === 0) {
+            delete userGroups[groupId];
+          }
+        }
+        break;
+      }
+    }
+  });
 });
+
+// Helper function to emit group messages (can be used in your routes)
+export const emitGroupMessage = (messageData) => {
+  const { groupId, sender, text, messageType, replyTo } = messageData;
+  
+  io.to(groupId).emit("newGroupMessage", {
+    ...messageData,
+    isTemporary: false // This message is from DB
+  });
+  
+  console.log(`📢 Emitted group message to ${groupId} from ${sender._id}`);
+};
 
 connectDB()
   .then(() => {

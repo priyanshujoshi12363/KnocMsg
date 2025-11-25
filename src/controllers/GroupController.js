@@ -120,7 +120,7 @@ export const sendGrpmsg = async (req, res) => {
 
     // 5️⃣ Populate sender info for frontend
     const populatedMessage = await GroupMessage.findById(newMessage._id)
-      .populate("sender", "username profilePic")
+      .populate("sender", "username ")
       .populate("replyTo");
 
     // 6️⃣ Emit to all online group members
@@ -154,7 +154,7 @@ export const getGroupMessages = async (req, res) => {
 
     // Fetch messages for this group, sorted by createdAt ascending (oldest first)
     const messages = await GroupMessage.find({ groupId })
-      .populate("sender", "username profilePic") // populate sender info
+      .populate("sender", "username ") // populate sender info
       .populate("replyTo") // populate reply message if any
       .sort({ createdAt: 1 }); // oldest to newest
 
