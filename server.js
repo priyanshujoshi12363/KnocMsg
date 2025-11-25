@@ -8,6 +8,7 @@ const { RtcTokenBuilder, RtcRole } = pkg;
 import connectDB from "./src/db/index.js";
 import UserRouter from "./src/routers/UserRouter.js";
 import msgRouters from './src/routers/msgRouters.js'
+import GroupRoutes from './src/routers/GroupRoutes.js'
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/user", UserRouter);
 app.use("/msg" , msgRouters);
+app.use("/grp" , GroupRoutes);
 
 // 🔑 AGORA TOKEN GENERATION ENDPOINT
 app.get("/agora-token", (req, res) => {
