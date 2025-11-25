@@ -2,9 +2,7 @@ import mongoose from "mongoose";
 
 const GroupMessageSchema = new mongoose.Schema(
   {
-    groupImg:{
-      type:String
-    },
+
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Group",

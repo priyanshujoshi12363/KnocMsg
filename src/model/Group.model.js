@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 
 
 const GroupSchema = new mongoose.Schema({
+    groupImg:{
+      type:String
+    },
     name: {
         type: String,
         required: true
