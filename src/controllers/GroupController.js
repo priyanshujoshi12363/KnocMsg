@@ -139,24 +139,34 @@ export const sendGrpmsg = async (req, res) => {
   }
 };
 
-
 export const getGroupMessages = async (req, res) => {
   try {
     const { groupId } = req.params;
 
     if (!groupId) {
-      return res.status(400).json({ success: false, message: "Group ID is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Group ID is required",
+      });
     }
 
     // Check if group exists
     const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
 
-    // Fetch messages for this group, sorted by createdAt ascending (oldest first)
+    // Fetch all messages of this group
     const messages = await GroupMessage.find({ groupId })
-      .populate("sender", "username ") // populate sender info
-      .populate("replyTo") // populate reply message if any
-      .sort({ createdAt: 1 }); // oldest to newest
+      .populate("sender", "username profilePic") // include username + profile image
+      .populate({
+        path: "replyTo",
+        populate: { path: "sender", select: "username profilePic" }
+      })
+      .sort({ createdAt: 1 }); // oldest → newest
 
     return res.status(200).json({
       success: true,
@@ -165,6 +175,9 @@ export const getGroupMessages = async (req, res) => {
 
   } catch (error) {
     console.error("Get group messages error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
