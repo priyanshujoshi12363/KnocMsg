@@ -35,7 +35,7 @@ export const roastFace = async (req, res) => {
 
     let fastApiResponse;
     try {
-      const fastApiUrl = process.env.FASTAPI_URL || "https://roast-ai-wpf7.onrender.com/api/v1/roast";
+      const fastApiUrl = process.env.FASTAPI_URL || "https://roast-ai-lyg2.onrender.com/api/v1/roast";
       
       fastApiResponse = await axios.post(
         fastApiUrl,
