@@ -9,7 +9,7 @@ import connectDB from "./src/db/index.js";
 import UserRouter from "./src/routers/UserRouter.js";
 import msgRouters from './src/routers/msgRouters.js'
 import GroupRoutes from './src/routers/GroupRoutes.js'
-
+import MLRoutes from './src/routers/MLRoutes.js' 
 dotenv.config();
 
 const app = express();
@@ -24,7 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/user", UserRouter);
 app.use("/msg" , msgRouters);
 app.use("/grp" , GroupRoutes);
-
+app.use('/Ai' , MLRoutes)
 // 🔑 AGORA TOKEN GENERATION ENDPOINT
 app.get("/agora-token", (req, res) => {
   try {
