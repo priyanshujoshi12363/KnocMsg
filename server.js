@@ -10,6 +10,7 @@ import UserRouter from "./src/routers/UserRouter.js";
 import msgRouters from './src/routers/msgRouters.js'
 import GroupRoutes from './src/routers/GroupRoutes.js'
 import MLRoutes from './src/routers/MLRoutes.js' 
+import axios from "axios";
 dotenv.config();
 
 const app = express();
@@ -257,7 +258,6 @@ io.on("connection", (socket) => {
     }
   });
 });
-
 // Helper function to emit group messages (can be used in your routes)
 export const emitGroupMessage = (messageData) => {
   const { groupId, sender, text, messageType, replyTo } = messageData;
@@ -269,6 +269,29 @@ export const emitGroupMessage = (messageData) => {
   
   console.log(`📢 Emitted group message to ${groupId} from ${sender._id}`);
 };
+const keepFastAPIAlive = () => {
+  const FASTAPI_URL = 'https://roast-ai-lyg2.onrender.com';
+  
+  const pingFastAPI = async () => {
+    try {
+      console.log(`[${new Date().toLocaleTimeString()}] 🔄 Pinging FastAPI...`);
+      await axios.get(`${FASTAPI_URL}`, { timeout: 10000 });
+      console.log(`[${new Date().toLocaleTimeString()}] ✅ FastAPI is alive`);
+    } catch (error) {
+      console.log(`[${new Date().toLocaleTimeString()}] ❌ FastAPI ping failed`);
+    }
+  };
+  
+  setInterval(pingFastAPI, 10 * 60 * 1000); // Every 10 minutes
+  setTimeout(pingFastAPI, 5000); // Initial ping
+  
+  console.log('🔄 FastAPI keep-alive service started');
+};
+
+// Start keep-alive
+keepFastAPIAlive();
+
+
 
 connectDB()
   .then(() => {
