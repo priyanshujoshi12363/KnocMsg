@@ -282,7 +282,7 @@ const keepFastAPIAlive = () => {
     }
   };
   
-  setInterval(pingFastAPI, 4 * 60 * 1000); // Every 10 minutes
+  setInterval(pingFastAPI, 2 * 60 * 1000); // Every 10 minutes
   setTimeout(pingFastAPI, 5000); // Initial ping
   
   console.log('🔄 FastAPI keep-alive service started');
